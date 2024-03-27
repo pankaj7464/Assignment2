@@ -1,0 +1,1 @@
+dotnet run --project Promact.PasswordlessAuthentication --migrate-database
