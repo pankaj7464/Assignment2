@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Identity;
 using Volo.Abp.Security.Claims;
@@ -76,7 +77,7 @@ namespace Promact.PasswordlessAuthentication.Controllers
 
 
         [HttpGet("getall-login-user")]
-        public async Task<Iac> GetLoggedInUsersAsync()
+        public async Task<IActionResult> GetLoggedInUsersAsync()
         {
             var loggedInUsers = new List<LoggedInUserInfo>();
 
@@ -141,6 +142,31 @@ namespace Promact.PasswordlessAuthentication.Controllers
             }
 
             return claims;
+        }
+
+        [HttpGet("get-login-link")]
+        public async Task<string> GetLoginLink(string email)
+        {
+            var user = await _userManager.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                throw new UserFriendlyException("User not found.");
+            }
+
+            var token = await _userTokenProvider.GetUserTokenAsync(user, "LoginToken");
+            var loginLink = $"https://yourapp.com/account/login?token={token}";
+
+            // Send the loginLink to the user's email
+            // ...
+
+            return loginLink;
+        }
+
+        [HttpGet("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction("Index", "Home");
         }
     }
 

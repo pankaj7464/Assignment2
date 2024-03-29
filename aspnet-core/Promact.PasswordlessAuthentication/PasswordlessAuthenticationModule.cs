@@ -116,6 +116,8 @@ public class PasswordlessAuthenticationModule : AbpModule
             );
         });
 
+
+
         PreConfigure<OpenIddictBuilder>(builder =>
         {
             builder.AddValidation(options =>
@@ -144,6 +146,11 @@ public class PasswordlessAuthenticationModule : AbpModule
     {
         var hostingEnvironment = context.Services.GetHostingEnvironment();
         var configuration = context.Services.GetConfiguration();
+
+        Configure<AbpIdentityServerBuilderOptions>(options =>
+        {
+            options.AddDeveloperSigningCredential = false;
+        });
 
         context.Services
         .GetObject<IdentityBuilder>()
