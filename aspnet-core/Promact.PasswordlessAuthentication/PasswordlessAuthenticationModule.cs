@@ -49,6 +49,8 @@ using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.Validation.Localization;
 using Volo.Abp.VirtualFileSystem;
 using Microsoft.AspNetCore.Identity;
+using Volo.Abp.AspNetCore.SignalR;
+using Autofac.Core;
 
 namespace Promact.PasswordlessAuthentication;
 
@@ -97,7 +99,9 @@ namespace Promact.PasswordlessAuthentication;
     // Setting Management module packages
     typeof(AbpSettingManagementApplicationModule),
     typeof(AbpSettingManagementEntityFrameworkCoreModule),
-    typeof(AbpSettingManagementHttpApiModule)
+    typeof(AbpSettingManagementHttpApiModule),
+
+     typeof(AbpAspNetCoreSignalRModule)
 )]
 public class PasswordlessAuthenticationModule : AbpModule
 {
@@ -161,7 +165,9 @@ public class PasswordlessAuthenticationModule : AbpModule
         {
             context.Services.Replace(ServiceDescriptor.Singleton<IEmailSender, NullEmailSender>());
         }
-
+        context.Services.AddSession();
+        context.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+        context.Services.AddHttpContextAccessor();
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureMultiTenancy();
@@ -373,6 +379,7 @@ public class PasswordlessAuthenticationModule : AbpModule
         app.UseCorrelationId();
         app.UseStaticFiles();
         app.UseRouting();
+        app.UseSession();
         app.UseCors();
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();

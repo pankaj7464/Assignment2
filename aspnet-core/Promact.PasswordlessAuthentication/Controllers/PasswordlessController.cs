@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using IdentityModel;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,43 +15,70 @@ namespace Promact.PasswordlessAuthentication.Controllers
 {
     public class PasswordlessController : AbpController
     {
+
         protected IdentityUserManager UserManager { get; }
         private readonly IIdentityUserRepository _userRepository;
         private readonly UserClaimsPrincipalFactory<Volo.Abp.Identity.IdentityUser> _claimsPrincipalFactory;
+        private readonly ICurrentUser _currentUser;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public string PasswordlessLoginUrl { get; set; }
-        public PasswordlessController(IdentityUserManager userManager, IIdentityUserRepository userRepository)
+        public PasswordlessController(
+            IdentityUserManager userManager,
+            IHttpContextAccessor httpContextAccessor,
+            IIdentityUserRepository userRepository,
+            ICurrentUser currentUser)
         {
+            _httpContextAccessor = httpContextAccessor;
             UserManager = userManager;
             _userRepository = userRepository;
-            UserClaimsPrincipalFactory<Volo.Abp.Identity.IdentityUser> claimsPrincipalFactory;
+            _currentUser = currentUser;
+
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> RegisterUserAsync(string email)
         {
-            // Check if the user with the provided email already exists
+            // Check if the user with the provided email exists
             var existingUser = await UserManager.FindByEmailAsync(email);
-            if (existingUser != null)
+
+            // Split the email address at the "@" symbol
+            string[] firstpart = email.Split('@');
+
+            // Take the part before "@" as the username
+            string username = firstpart[0];
+            // If the user doesn't exist, create a new account
+            if (existingUser == null)
             {
-                return BadRequest("User with this email already exists.");
-            }
+                var newUser = new Volo.Abp.Identity.IdentityUser(Guid.NewGuid(), username, email);
+                var result = await UserManager.CreateAsync(newUser);
+                if (!result.Succeeded)
+                {
+                    return BadRequest("Failed to create user.");
+                }
 
-            // Create a new user
-            var newUser = new Volo.Abp.Identity.IdentityUser(Guid.NewGuid(), email, email);
-            var result = await UserManager.CreateAsync(newUser);
-            if (!result.Succeeded)
+                // Generate magic link token for the new user
+                var token = await UserManager.GenerateUserTokenAsync(newUser, "PasswordlessLoginProvider", "passwordless-auth");
+
+                // Send the magic link to the user's email
+                // You can implement your email sending logic here
+                var passwordlessLoginUrl = Url.Action("Login", "Passwordless", new { token = token, userId = newUser.Id.ToString() }, Request.Scheme);
+
+                return Ok(new {message = "User created successfully. Magic link sent to email." ,link = passwordlessLoginUrl });
+            }
+            else // If the user exists, send a magic link
             {
-                return BadRequest("Failed to create user.");
+                // Generate magic link token for the existing user
+                var token = await UserManager.GenerateUserTokenAsync(existingUser, "PasswordlessLoginProvider", "passwordless-auth");
+
+                // Send the magic link to the user's email
+                // You can implement your email sending logic here
+                var passwordlessLoginUrl = Url.Action("Login", "Passwordless", new { token = token, userId = existingUser.Id.ToString() }, Request.Scheme);
+
+                return Ok(new { message = "You are exising user. Magic link sent to email.", link = passwordlessLoginUrl });
             }
-
-            // Generate magic link token for the new user
-            var token = await UserManager.GenerateUserTokenAsync(newUser, "PasswordlessLoginProvider", "passwordless-auth");
-
-            // Send the magic link to the user's email or display it on the registration page
-            PasswordlessLoginUrl = Url.Action("Login", "Passwordless", new { token = token, userId = newUser.Id.ToString() }, Request.Scheme);
-            // For demonstration purposes, we'll return the token
-            return Ok(PasswordlessLoginUrl);
         }
+
+
 
         [HttpGet("login")]
         public async Task<IActionResult> Login(string token, string userId)
@@ -71,55 +100,43 @@ namespace Promact.PasswordlessAuthentication.Controllers
             );
 
             await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
-
+            _httpContextAccessor.HttpContext.Session.SetString("UserId", userId);
             return Ok("Successfully logged in"); // HTTP 200
         }
 
 
-        [HttpGet("getall-login-user")]
-        public async Task<IActionResult> GetLoggedInUsersAsync()
+        [Authorize]
+        [HttpGet("logout")]
+        public async Task<IActionResult> Logout(string userId)
         {
-            var loggedInUsers = new List<LoggedInUserInfo>();
+            var user = await UserManager.FindByIdAsync(userId);
+            await UserManager.UpdateSecurityStampAsync(user);
 
-            // Get all user claims
-            var allUserClaims = await UserManager.Users
-                .SelectMany(u => u.Claims)
-                .ToListAsync();
+            await HttpContext.SignOutAsync();
+            _httpContextAccessor.HttpContext.Session.Remove("UserId");
+            return Ok("User Logged out successfully");
+        }
 
-            // Filter out the claims related to logged-in users
-            var loggedInUserClaims = allUserClaims
-                .Where(c => c.ClaimType == ClaimTypes.AuthenticationMethod && c.ClaimValue == "PasswordlessLoginProvider")
-                .ToList();
+        [HttpGet("getall-loggedin-user")]
+        public IActionResult GetLoggedInUsers()
+        {
+            var loggedInUsers = new List<string>();
 
-            // Extract user IDs of logged-in users
-            var loggedInUserIds = loggedInUserClaims
-                .Select(c => c.UserId)
-                .ToList();
+            // Retrieve all active session keys
+            var sessionKeys = _httpContextAccessor.HttpContext.Session.Keys;
 
-            // Retrieve user details for logged-in users
-            foreach (var userId in loggedInUserIds)
+            // Iterate through session keys to find logged-in users
+            foreach (var sessionKey in sessionKeys)
             {
-                var user = await UserManager.FindByIdAsync(userId.ToString());
+                var sessionValue = _httpContextAccessor.HttpContext.Session.GetString(sessionKey);
 
-                if (user != null)
-                {
-                    var principal = await _claimsPrincipalFactory.CreateAsync(user);
-
-                    // Extract user details from claims
-                    var userInfo = new LoggedInUserInfo
-                    {
-                        UserId = user.Id,
-                        UserName = principal.FindFirstValue(AbpClaimTypes.UserName),
-                        Email = principal.FindFirstValue(AbpClaimTypes.Email)
-                        // Add more properties as needed
-                    };
-
-                    loggedInUsers.Add(userInfo);
-                }
+                // Assuming your session key represents user ID
+                loggedInUsers.Add(sessionValue);
             }
 
             return Ok(loggedInUsers);
         }
+
         private static IEnumerable<Claim> CreateClaims(IUser user, IEnumerable<string> roles)
         {
             var claims = new List<Claim>
@@ -144,37 +161,8 @@ namespace Promact.PasswordlessAuthentication.Controllers
             return claims;
         }
 
-        [HttpGet("get-login-link")]
-        public async Task<string> GetLoginLink(string email)
-        {
-            var user = await _userManager.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                throw new UserFriendlyException("User not found.");
-            }
-
-            var token = await _userTokenProvider.GetUserTokenAsync(user, "LoginToken");
-            var loginLink = $"https://yourapp.com/account/login?token={token}";
-
-            // Send the loginLink to the user's email
-            // ...
-
-            return loginLink;
-        }
-
-        [HttpGet("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
-            return RedirectToAction("Index", "Home");
-        }
+     
     }
 
-    public class LoggedInUserInfo
-    {
-        public Guid UserId { get; set; }
-        public string UserName { get; set; }
-        public string Email { get; set; }
-       
-    }
+    
 }

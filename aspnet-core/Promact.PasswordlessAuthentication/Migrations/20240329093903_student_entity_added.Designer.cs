@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Promact.PasswordlessAuthentication.Data;
 using Volo.Abp.EntityFrameworkCore;
@@ -12,9 +13,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace Promact.PasswordlessAuthentication.Migrations
 {
     [DbContext(typeof(PasswordlessAuthenticationDbContext))]
-    partial class PasswordlessAuthenticationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240329093903_student_entity_added")]
+    partial class student_entity_added
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

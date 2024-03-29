@@ -19,8 +19,9 @@ public class PasswordlessAuthenticationDbContext : AbpDbContext<PasswordlessAuth
     {
     }
 
-    public DbSet<ApplicationUser> Users { get; set; }
-    public DbSet<Students> Students { get; set; }
+    public DbSet<Student> students { get; set; }
+
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -38,15 +39,9 @@ public class PasswordlessAuthenticationDbContext : AbpDbContext<PasswordlessAuth
 
         /* Configure your own entities here */
 
-        builder.Entity<ApplicationUser>(b =>
+        builder.Entity<Student>(o =>
         {
-           
-            b.ConfigureByConvention();
-        });
-        builder.Entity<Students>(b =>
-        {
-
-            b.ConfigureByConvention();
+            o.ConfigureByConvention();
         });
     }
 }
