@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Promact.PasswordlessAuthentication.Entities;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.Modeling;
 using Volo.Abp.FeatureManagement.EntityFrameworkCore;
 using Volo.Abp.Identity.EntityFrameworkCore;
 using Volo.Abp.OpenIddict.EntityFrameworkCore;
@@ -17,6 +19,10 @@ public class PasswordlessAuthenticationDbContext : AbpDbContext<PasswordlessAuth
     {
     }
 
+    public DbSet<Student> students { get; set; }
+
+
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -32,5 +38,10 @@ public class PasswordlessAuthenticationDbContext : AbpDbContext<PasswordlessAuth
         builder.ConfigureTenantManagement();
 
         /* Configure your own entities here */
+
+        builder.Entity<Student>(o =>
+        {
+            o.ConfigureByConvention();
+        });
     }
 }
