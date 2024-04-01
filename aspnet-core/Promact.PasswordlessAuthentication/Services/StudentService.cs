@@ -4,12 +4,13 @@ using Volo.Abp.Domain.Repositories;
 using Volo.Abp;
 using Promact.PasswordlessAuthentication.Entities;
 using Promact.PasswordlessAuthentication.Services.Dtos;
-using static Volo.Abp.UI.Navigation.DefaultMenuNames.Application;
 using Promact.PasswordlessAuthentication.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Promact.PasswordlessAuthentication.Services
 {
 
+    [Authorize]
     public class StudentService : CrudAppService<Student, StudentDto, Guid, PagedAndSortedResultRequestDto, CreateUpdateStudentDto, CreateUpdateStudentDto>,
      IStudentAppService
     {

@@ -20,9 +20,6 @@ public class PasswordlessAuthenticationDbContext : AbpDbContext<PasswordlessAuth
     }
 
     public DbSet<Student> students { get; set; }
-
-
-
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

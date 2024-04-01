@@ -1,0 +1,54 @@
+<header
+  class="bg-[#3f51b5] py-3 px-6 flex justify-between items-center gap-10 mb-4"
+>
+  <!-- Left side: Project name -->
+  <div class="flex items-center">
+    <span class="text-white text-lg font-semibold">Authentication</span>
+  </div>
+
+  <!-- Center: Search box -->
+  <div class="flex-grow flex items-center justify-center">
+    <input
+      class="flex-grow bg-[#6876c2] text-white rounded py-1 px-3 focus:outline-none"
+      type="text"
+      placeholder="Search..."
+    />
+  </div>
+
+  <!-- Right side: User -->
+  <div>
+    <div [matMenuTriggerFor]="menu" class="flex items-center cursor-pointer">
+      <img
+        class="w-8 h-8 rounded-full mr-2"
+        src="https://randomuser.me/api"
+        alt=""
+      />
+      <div class="flex flex-col">
+        <span class="text-[.8rem] font-bold">Pankaj</span>
+      </div>
+    </div>
+
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item (click)="logout()">Logout</button>
+      <button mat-menu-item>Profile</button>
+    </mat-menu>
+  </div>
+</header>
+<mat-drawer-container class="main-container">
+  <mat-drawer mode="side" opened>
+     <!-- Center: Buttons -->
+     <div class="flex gap-4 flex-col m-2">
+      <button
+      *ngFor="let nav of Navigations"
+        color="primary"
+        (click)="navigateTo(nav.path)"
+        class="h-10 bg-gray-100 hover:bg-gray-600 py-2 px-4 rounded focus:outline-none focus:shadow-outline lg:min-w-[10rem]"
+      >
+        {{ nav.displayName }}
+      </button>
+    </div>
+  </mat-drawer>
+  <mat-drawer-content>
+      <router-outlet></router-outlet>
+  </mat-drawer-content>
+</mat-drawer-container>

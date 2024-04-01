@@ -7,7 +7,6 @@ using Promact.PasswordlessAuthentication.Data;
 using Promact.PasswordlessAuthentication.Localization;
 using OpenIddict.Validation.AspNetCore;
 using Volo.Abp;
-using Volo.Abp.Uow;
 using Volo.Abp.Account;
 using Volo.Abp.Account.Web;
 using Volo.Abp.AspNetCore.MultiTenancy;
@@ -51,6 +50,11 @@ using Volo.Abp.VirtualFileSystem;
 using Microsoft.AspNetCore.Identity;
 using Volo.Abp.AspNetCore.SignalR;
 using Autofac.Core;
+using Promact.PasswordlessAuthentication.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Promact.PasswordlessAuthentication.Services.Emailing;
 
 namespace Promact.PasswordlessAuthentication;
 
@@ -100,7 +104,6 @@ namespace Promact.PasswordlessAuthentication;
     typeof(AbpSettingManagementApplicationModule),
     typeof(AbpSettingManagementEntityFrameworkCoreModule),
     typeof(AbpSettingManagementHttpApiModule),
-
      typeof(AbpAspNetCoreSignalRModule)
 )]
 public class PasswordlessAuthenticationModule : AbpModule
@@ -151,10 +154,7 @@ public class PasswordlessAuthenticationModule : AbpModule
         var hostingEnvironment = context.Services.GetHostingEnvironment();
         var configuration = context.Services.GetConfiguration();
 
-        Configure<AbpIdentityServerBuilderOptions>(options =>
-        {
-            options.AddDeveloperSigningCredential = false;
-        });
+       
 
         context.Services
         .GetObject<IdentityBuilder>()
@@ -168,6 +168,39 @@ public class PasswordlessAuthenticationModule : AbpModule
         context.Services.AddSession();
         context.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         context.Services.AddHttpContextAccessor();
+        context.Services.AddSignalR();
+        context.Services.AddSingleton<UserHub>();
+        context.Services.AddScoped<IEmailService, EmailService>();
+        context.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowOrigin",
+                builder => builder
+                           .AllowAnyMethod()
+                           .AllowAnyHeader()
+                           .SetIsOriginAllowed(origin => true)
+                           .AllowCredentials());
+        });
+
+
+        context.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+ 
+            options.RequireHttpsMetadata = false;
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(configuration["jwt:key"])),
+                ValidateIssuer = false, 
+                ValidateAudience = false 
+            };
+        });
+
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureMultiTenancy();
@@ -288,13 +321,39 @@ public class PasswordlessAuthenticationModule : AbpModule
             configuration["AuthServer:Authority"]!,
             new Dictionary<string, string>
             {
-                    {"PasswordlessAuthentication", "PasswordlessAuthentication API"}
+            {"PasswordlessAuthentication", "PasswordlessAuthentication API"}
             },
             options =>
             {
                 options.SwaggerDoc("v1", new OpenApiInfo { Title = "PasswordlessAuthentication API", Version = "v1" });
                 options.DocInclusionPredicate((docName, description) => true);
                 options.CustomSchemaIds(type => type.FullName);
+
+                // Add JWT bearer token authentication
+                options.AddSecurityDefinition("jwt_auth", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+                });
+
+                // Add security requirements
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "jwt_auth"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
+                });
             });
     }
 
@@ -367,6 +426,7 @@ public class PasswordlessAuthenticationModule : AbpModule
         if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
+            app.UseCors("AllowOrigin");
         }
 
         app.UseAbpRequestLocalization();
@@ -397,10 +457,14 @@ public class PasswordlessAuthenticationModule : AbpModule
         app.UseAbpSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "PasswordlessAuthentication API");
-
             var configuration = context.GetConfiguration();
             options.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
             options.OAuthScopes("PasswordlessAuthentication");
+        
+        });
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapHub<UserHub>("/userHub");
         });
 
         app.UseAuditing();

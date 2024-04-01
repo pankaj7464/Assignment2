@@ -1,0 +1,10 @@
+.dashboard-container {
+    padding: 10px;
+    height: 70vh;
+  }
+  
+  .dashboard-card {
+    width: 50%;
+position: relative;
+  }
+

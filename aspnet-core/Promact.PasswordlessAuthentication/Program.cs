@@ -1,4 +1,5 @@
 using Promact.PasswordlessAuthentication.Data;
+using Promact.PasswordlessAuthentication.Services;
 using Serilog;
 using Serilog.Events;
 using Volo.Abp.Data;
@@ -41,8 +42,9 @@ public class Program
             }
             await builder.AddApplicationAsync<PasswordlessAuthenticationModule>();
             var app = builder.Build();
+        
             await app.InitializeApplicationAsync();
-
+            app.MapHub<UserHub>("active-user");
             if (IsMigrateDatabase(args))
             {
                 await app.Services.GetRequiredService<PasswordlessAuthenticationDbMigrationService>().MigrateAsync();

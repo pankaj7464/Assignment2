@@ -1,0 +1,77 @@
+
+<form
+  [formGroup]="form"
+  (ngSubmit)="submitForm()"
+  class="flex gap-2 flex-wrap m-4"
+
+>
+  <div class="flex justify-between items-center w-full mb-4 gap-4">   
+    <!-- General Update -->
+    <mat-form-field class="flex-1">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" rows="1">
+    </mat-form-field>
+    <mat-form-field class="flex-1">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" rows="1">
+      </mat-form-field>
+      <mat-form-field class="flex-1">
+        <mat-label>Age</mat-label>
+        <input matInput formControlName="age" type="number">
+      </mat-form-field>
+  </div>
+
+  <!-- Submit Button -->
+  <button
+    mat-raised-button
+    color="primary"
+    background
+    type="submit"
+    class="mat-primary"
+  >
+    Submit
+  </button>
+</form>
+
+<div class="mat-elevation-z8 mat-table-responsive">
+  <table mat-table [dataSource]="dataSource">
+    <!-- Date Column -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Name</th>
+      <td mat-cell *matCellDef="let element">{{ element.name }}</td>
+    </ng-container>
+
+    <!-- General Update Column -->
+    <ng-container matColumnDef="email">
+      <th mat-header-cell *matHeaderCellDef>Email</th>
+      <td mat-cell *matCellDef="let element">{{ element.email }}</td>
+    </ng-container>
+
+    <!-- General Update Column -->
+    <ng-container matColumnDef="age">
+        <th mat-header-cell *matHeaderCellDef>Age</th>
+        <td mat-cell *matCellDef="let element">{{ element.age }}</td>
+      </ng-container>
+    <!-- Action Column -->
+    <ng-container matColumnDef="action">
+      <th mat-header-cell *matHeaderCellDef>Action</th>
+      <td mat-cell *matCellDef="let element" class="flex items-center">
+        <button
+         
+          mat-icon-button
+          (click)="editItem(element)"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button       mat-icon-button
+          (click)="deleteItem(element.id)"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  </table>
+</div>
